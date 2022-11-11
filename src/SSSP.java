@@ -21,6 +21,8 @@ import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CyclicBarrier;
 import java.lang.*;
 
 public class SSSP {
@@ -600,6 +602,11 @@ class Surface {
     int numBuckets;
     int delta;
     private ArrayList<LinkedHashSet<Vertex>> buckets;
+
+    private ArrayList<ArrayList<LinkedHashSet<Vertex>>> bucketsArray;
+
+    // we use a linked queue to keep track of the updates that will work concurrently
+    private ArrayList<ConcurrentLinkedQueue<Request>> messagQueues;
     // This is an ArrayList instead of a plain array to avoid the generic
     // array creation error message that stems from Java erasure.
 
@@ -646,6 +653,21 @@ class Surface {
             }
         }
         return rtn;
+    }
+
+    class ConcurrentRelax implements Runnable{
+        private CyclicBarrier barrier;
+        private ArrayList<LinkedHashSet<Vertex>> bucket;
+        private int progress;
+        private int tid;
+
+        public ConcurrentRelax(CyclicBarrier barrier, int tid) {
+            this.barrier = barrier;
+            this.tid = tid;
+            this.progress = 0;
+            this.bucket = buckets.get;
+        }
+
     }
 
     // Main solver routine.
