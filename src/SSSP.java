@@ -21,6 +21,7 @@ import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
 import java.util.*;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CyclicBarrier;
 import java.lang.*;
@@ -159,9 +160,9 @@ public class SSSP {
 
     // Initialize appropriate program components for specified animation mode.
     //
-    private Surface build(RootPaneContainer pane, int an) {
+    private Surface build(RootPaneContainer pane, int an, int numThread) {
         final Coordinator c = new Coordinator();
-        Surface s = new Surface(n, sd, geom, degree, c);
+        Surface s = new Surface(n, sd, geom, degree, c, numThread);
         Animation at = null;
         if (an == SHOW_RESULT || an == FULL_ANIMATION) {
             at = new Animation(s);
@@ -206,7 +207,7 @@ public class SSSP {
         } else {
             System.out.printf("%d vertices, seed %d\n", n, sd);
         }
-        Surface s = me.build(f, animate);
+        Surface s = me.build(f, animate, numThreads);
         if (f != null) {
             f.pack();
             f.setVisible(true);
@@ -601,15 +602,15 @@ class Surface {
 
     int numBuckets;
     int delta;
-    private ArrayList<LinkedHashSet<Vertex>> buckets;
 
-    private ArrayList<ArrayList<LinkedHashSet<Vertex>>> bucketsArray;
+    private int numThread;
+    // we use buketsArray with Vector because Vector can be synchronized but Arraylist can't
+    private Vector<Vector<LinkedHashSet<Vertex>>> bucketsArray;
 
-    // we use a linked queue to keep track of the updates that will work concurrently
-    private ArrayList<ConcurrentLinkedQueue<Request>> messagQueues;
     // This is an ArrayList instead of a plain array to avoid the generic
     // array creation error message that stems from Java erasure.
-
+    // we use a linked queue to keep track of the updates that will work concurrently
+    private ArrayList<ConcurrentLinkedQueue<Request>> messagQueues;
     // A Request is a potential relaxation.
     //
     class Request {
@@ -619,8 +620,11 @@ class Surface {
         // To relax a request is to consider whether e might provide
         // v with a better path back to the source.
         //
-        public void relax() throws Coordinator.KilledException {
+        public void relax(int tid) throws Coordinator.KilledException {
             Vertex o = e.other(v);
+
+            // the only thing we need to change here is to get the right bucket using the tread id
+            Vector<LinkedHashSet<Vertex>> buckets = bucketsArray.get(tid);
             long altDist = o.distToSource + e.weight;
             if (altDist < v.distToSource) {
                 // Yup; better path home.
@@ -655,17 +659,114 @@ class Surface {
         return rtn;
     }
 
-    class ConcurrentRelax implements Runnable{
+    class ConcurrentRequest implements Runnable{
         private CyclicBarrier barrier;
-        private ArrayList<LinkedHashSet<Vertex>> bucket;
-        private int progress;
+        private int numThread;
+        // again, it is a Vector because it needs to be synchronized
+        private Vector<LinkedHashSet<Vertex>> buckets;
+        private int count;
         private int tid;
 
-        public ConcurrentRelax(CyclicBarrier barrier, int tid) {
+        public ConcurrentRequest(CyclicBarrier barrier, int tid, int numThread) {
             this.barrier = barrier;
             this.tid = tid;
-            this.progress = 0;
-            this.bucket = buckets.get;
+            this.count = 0;
+            this.buckets = bucketsArray.get(tid);
+            this.numThread = numThread;
+        }
+
+        @Override
+        public void run() {
+            LinkedList<Vertex> temp = new LinkedList<Vertex>();
+            LinkedList<Request> requests = new LinkedList<Request>();
+
+            for(;;){
+                while(true){
+                    try{
+                        barrier.await();
+                    }
+                    catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                    catch (BrokenBarrierException e){
+                        e.printStackTrace();
+                    }
+                    while(!messagQueues.get(tid).isEmpty()){
+                        Request r = messagQueues.get(tid).poll();
+                        try{
+                            r.relax(tid);
+                        }
+                        catch (Coordinator.KilledException e){
+                            e.printStackTrace();
+                        }
+                    }
+
+                    requests = findRequests(buckets.get(count), true);
+                    temp.addAll(buckets.get(count));
+
+                    buckets.set(count, new LinkedHashSet<Vertex>());
+
+                    for(Request r : requests){
+                        messagQueues.get(r.v.hashCode() % numThread).add(r);
+                    }
+
+                    try{
+                        barrier.await();
+                    }
+                    catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                    catch (BrokenBarrierException e){
+                        e.printStackTrace();
+                    }
+
+                    // check whether there exists any requests, if there is not, then it means we can already end this while loop
+                    int checksize = 0;
+                    for (ConcurrentLinkedQueue<Request> mq : messagQueues){
+                        if (!mq.isEmpty())
+                            checksize++;
+                    }
+                    if (checksize == 0)
+                        break;
+                }
+
+                // this time, we need to check the heavy requests
+                requests = findRequests(temp, false);
+                for (Request r : requests){
+                    try{
+                        r.relax(tid);
+                    }
+                    catch (Coordinator.KilledException e){
+                        e.printStackTrace();
+                    }
+                }
+
+                try{
+                    barrier.await();
+                }
+                catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+                catch (BrokenBarrierException e){
+                    e.printStackTrace();
+                }
+
+                if (count == numBuckets - 1){
+                    int sizecount = 0;
+                    for (Vector<LinkedHashSet<Vertex>> buckets : bucketsArray) {
+                        for (LinkedHashSet<Vertex> b : buckets) {
+                            if (!b.isEmpty())
+                                sizecount++;
+                        }
+                    }
+                    if (sizecount == 0)
+                        break;
+                    else
+                        count = -1;
+                }
+                count++;
+                
+            }
         }
 
     }
@@ -678,39 +779,34 @@ class Surface {
         // All buckets, together, cover a range of 2 * maxCoord,
         // which is larger than the weight of any edge, so a relaxation
         // will never wrap all the way around the array.
-        buckets = new ArrayList<LinkedHashSet<Vertex>>(numBuckets);
-        for (int i = 0; i < numBuckets; ++i) {
-            buckets.add(new LinkedHashSet<Vertex>());
+        bucketsArray = new Vector<>();
+        messagQueues = new ArrayList<>();
+        for (int i = 0; i < numThread; i++){
+            bucketsArray.add(new Vector<LinkedHashSet<Vertex>>());
+            messagQueues.add(new ConcurrentLinkedQueue<Request>());
+            for (int j = 0; j < numBuckets; j++){
+                bucketsArray.get(i).add(new LinkedHashSet<Vertex>());
+            }
         }
-        buckets.get(0).add(vertices[0]);
-        int i = 0;
-        for (;;) {
-            LinkedList<Vertex> removed = new LinkedList<Vertex>();
-            LinkedList<Request> requests;
-            while (buckets.get(i).size() > 0) {
-                requests = findRequests(buckets.get(i), true);  // light relaxations
-                // Move all vertices from bucket i to removed list.
-                removed.addAll(buckets.get(i));
-                buckets.set(i, new LinkedHashSet<Vertex>());
-                for (Request req : requests) {
-                    req.relax();
-                }
+        
+        //set the source vertex
+        bucketsArray.get(0).get(0).add(vertices[0]);
+        Thread[] threads = new Thread[numThread];
+        CyclicBarrier barrier = new CyclicBarrier(numThread);
+
+        // start running parallelized delta-stepping
+        for (int t = 0; t < numThread; t++) {
+            threads[t] = new Thread(new ConcurrentRequest(barrier, t, numThread));
+            threads[t].start();
+        }
+
+        // recycle all the threads
+        for (Thread t : threads) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-            // Now bucket i is empty.
-            requests = findRequests(removed, false);    // heavy relaxations
-            for (Request req : requests) {
-                req.relax();
-            }
-            // Find next nonempty bucket.
-            int j = i;
-            do {
-                j = (j + 1) % numBuckets;
-            } while (j != i && buckets.get(j).size() == 0);
-            if (i == j) {
-                // Cycled all the way around; we're done
-                break;  // for (;;) loop
-            }
-            i = j;
         }
     }
 
@@ -719,7 +815,7 @@ class Surface {
 
     // Constructor
     //
-    public Surface(int N, long SD, double G, int D, Coordinator C) {
+    public Surface(int N, long SD, double G, int D, Coordinator C, int numThread) {
         n = N;
         sd = SD;
         geom = G;
@@ -731,6 +827,7 @@ class Surface {
         edges = new Vector<Edge>();
 
         prn = new Random();
+        this.numThread = numThread;
         reset();
     }
 }
