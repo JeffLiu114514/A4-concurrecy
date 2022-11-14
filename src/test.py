@@ -9,7 +9,7 @@ data = dict()
 index = []
 
 
-for n in range(N, N+ 1000, 500):
+for n in range(N, N+ 10101, 500):
     cur_array = []
     for t in T:
         cur = subprocess.run(["java", "SSSP", "-a", "0", "-n", f"{N}", "-t", f"{t}"], capture_output=True)
