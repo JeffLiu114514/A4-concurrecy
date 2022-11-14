@@ -205,7 +205,7 @@ public class SSSP {
                 }
             });
         } else {
-            System.out.printf("%d vertices, seed %d\n", n, sd);
+            // System.out.printf("%d vertices, seed %d\n", n, sd);
         }
         Surface s = me.build(f, animate, numThreads);
         if (f != null) {
@@ -223,7 +223,8 @@ public class SSSP {
                 }
             } catch(Coordinator.KilledException e) { }
             long endTime = new Date().getTime();
-            System.out.printf("elapsed time: %.3f seconds\n",
+            System.out.printf(//"elapsed time: %.3f seconds\n",
+                    "%.3f", 
                     (double) (endTime-startTime)/1000);
         }
     }
