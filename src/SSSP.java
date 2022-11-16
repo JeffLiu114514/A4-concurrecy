@@ -243,7 +243,7 @@ public class SSSP {
             } catch(Coordinator.KilledException e) { }
             long endTime = new Date().getTime();
             System.out.printf(//"elapsed time: %.3f seconds\n",
-                    "%.5f", 
+                    "%.3f", 
                     (double) (endTime-startTime)/1000);
         }
     }
