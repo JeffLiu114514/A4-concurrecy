@@ -684,13 +684,11 @@ class Surface {
         private int numThread;
         // again, it is a Vector because it needs to be synchronized
         private Vector<LinkedHashSet<Vertex>> buckets;
-        private int count;
         private int tid;
 
         public ConcurrentRequest(CyclicBarrier barrier, int tid, int numThread) {
             this.barrier = barrier;
             this.tid = tid;
-            this.count = 0;
             this.buckets = bucketsArray.get(tid);
             this.numThread = numThread;
         }
@@ -700,26 +698,8 @@ class Surface {
             LinkedList<Vertex> temp = new LinkedList<Vertex>();
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            for(;;){
+            for(int count = 0;count < numBuckets; count++){
                 while(true){
-                    try{
-                        barrier.await();
-                    }
-                    catch (InterruptedException e){
-                        e.printStackTrace();
-                    }
-                    catch (BrokenBarrierException e){
-                        e.printStackTrace();
-                    }
-                    while(!messagQueues.get(tid).isEmpty()){
-                        Request r = messagQueues.get(tid).poll();
-                        try{
-                            r.relax(tid);
-                        }
-                        catch (Coordinator.KilledException e){
-                            e.printStackTrace();
-                        }
-                    }
 
                     requests = findRequests(buckets.get(count), true);
                     temp.addAll(buckets.get(count));
@@ -730,24 +710,28 @@ class Surface {
                         messagQueues.get(r.v.hashCode() % numThread).add(r);
                     }
 
-                    try{
-                        barrier.await();
-                    }
-                    catch (InterruptedException e){
-                        e.printStackTrace();
-                    }
-                    catch (BrokenBarrierException e){
-                        e.printStackTrace();
+                    while(!messagQueues.get(tid).isEmpty()){
+                        Request r = messagQueues.get(tid).poll();
+                        try{
+                            r.relax(tid);
+                        }
+                        catch (Coordinator.KilledException e){
+                            e.printStackTrace();
+                        }
                     }
 
-                    // check whether there exists any requests, if there is not, then it means we can already end this while loop
-                    int checksize = 0;
-                    for (ConcurrentLinkedQueue<Request> mq : messagQueues){
-                        if (!mq.isEmpty())
-                            checksize++;
-                    }
-                    if (checksize == 0)
+                    if (buckets.get(count).size() == 0)
                         break;
+                }
+
+                try{
+                    barrier.await();
+                }
+                catch (InterruptedException e){
+                    e.printStackTrace();
+                }
+                catch (BrokenBarrierException e){
+                    e.printStackTrace();
                 }
 
                 // this time, we need to check the heavy requests
@@ -770,9 +754,6 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-                if (count == numBuckets - 1)
-                    break;
-                count++;
                 
             }
         }
