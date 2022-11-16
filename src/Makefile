@@ -1,3 +1,4 @@
+N = 500000
 
 all: clean compile run run2 run3 run4 extra2 end
 
