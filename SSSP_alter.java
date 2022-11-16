@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CyclicBarrier;
 import java.lang.*;
 
-public class SSSP_extra {
+public class SSSP_alter {
     private static int n = 50;              // default number of vertices
     private static double geom = 1.0;       // default degree of geometric reality
     // 0 means random edge weight; 1 means fully geometric distance
@@ -34,7 +34,6 @@ public class SSSP_extra {
     // (near the middle of the graph)
     private static long sd = 0;             // default random number seed
     private static int numThreads = 0;      // zero means use Dijkstra's alg;
-    public static int delta = -1;           // delta for delta stepping
     // positive means use Delta stepping
 
     private static final int TIMING_ONLY    = 0;
@@ -57,8 +56,7 @@ public class SSSP_extra {
                     + "-s <random number seed>\n"
                     + "-t <number of threads>\n"
                     + "    (0 means use Dijkstra's algorithm on one thread)\n"
-                    + "-v  (print this message)\n"
-                    + "-D  get the delta manually\n";
+                    + "-v  (print this message)\n";
 
     // Examine command-line arguments for alternative running modes.
     //
@@ -149,24 +147,7 @@ public class SSSP_extra {
                                 args[i]);
                     }
                 }
-
-            }else if (args[i].equals("-D")) {
-                if (++i >= args.length) {
-                    System.err.print("Missing the value for delta\n");
-                } else {
-                    int nt = -1;
-                    try {
-                        nt = Integer.parseInt(args[i]);
-                    } catch (NumberFormatException e) { }
-                    if (nt >= 0) {
-                        delta = nt;
-                    } else {
-                        System.err.printf("Number of threads (%s) must be nonnegative.\n",
-                                args[i]);
-                    }
-                }
-                
-            }else if (args[i].equals("-v")) {
+            } else if (args[i].equals("-v")) {
                 System.err.print(help);
                 System.exit(0);
             } else {
@@ -179,9 +160,9 @@ public class SSSP_extra {
 
     // Initialize appropriate program components for specified animation mode.
     //
-    private Surface build(RootPaneContainer pane, int an, int numThread, int delta) {
+    private Surface build(RootPaneContainer pane, int an, int numThread) {
         final Coordinator c = new Coordinator();
-        Surface s = new Surface(n, sd, geom, degree, c, numThread, delta);
+        Surface s = new Surface(n, sd, geom, degree, c, numThread);
         Animation at = null;
         if (an == SHOW_RESULT || an == FULL_ANIMATION) {
             at = new Animation(s);
@@ -214,7 +195,7 @@ public class SSSP_extra {
 
     public static void main(String[] args) {
         parseArgs(args);
-        SSSP_extra me = new SSSP_extra();
+        SSSP_alter me = new SSSP_alter();
         JFrame f = null;
         if (animate == SHOW_RESULT || animate == FULL_ANIMATION) {
             f = new JFrame("SSSP");
@@ -226,7 +207,7 @@ public class SSSP_extra {
         } else {
             // System.out.printf("%d vertices, seed %d\n", n, sd);
         }
-        Surface s = me.build(f, animate, numThreads, delta);
+        Surface s = me.build(f, animate, numThreads);
         if (f != null) {
             f.pack();
             f.setVisible(true);
@@ -770,20 +751,8 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-
-                if (count == numBuckets - 1){
-                    int sizecount = 0;
-                    for (Vector<LinkedHashSet<Vertex>> buckets : bucketsArray) {
-                        for (LinkedHashSet<Vertex> b : buckets) {
-                            if (!b.isEmpty())
-                                sizecount++;
-                        }
-                    }
-                    if (sizecount == 0)
-                        break;
-                    else
-                        count = -1;
-                }
+                if (count == numBuckets - 1)
+                    break;
                 count++;
                 
             }
@@ -795,16 +764,7 @@ class Surface {
     //
     public void DeltaSolve() throws Coordinator.KilledException {
         numBuckets = 2 * degree;
-        if (delta == -1)
-            delta = maxCoord / degree;
-        else{
-            int dividend = maxCoord * 2;
-            // size of buckets should not be 0 even the delta is very large
-            if (delta > dividend)
-                numBuckets = 1;
-            else
-                numBuckets = dividend / delta;
-        }
+        delta = maxCoord / degree;
         // All buckets, together, cover a range of 2 * maxCoord,
         // which is larger than the weight of any edge, so a relaxation
         // will never wrap all the way around the array.
@@ -844,20 +804,18 @@ class Surface {
 
     // Constructor
     //
-    public Surface(int N, long SD, double G, int D, Coordinator C, int numThread, int delta) {
+    public Surface(int N, long SD, double G, int D, Coordinator C, int numThread) {
         n = N;
         sd = SD;
         geom = G;
         degree = D;
         coord = C;
 
-
         vertices = new Vertex[n];
         vertexHash = new HashSet<Vertex>(n);
         edges = new Vector<Edge>();
 
         prn = new Random();
-        this.delta = delta;
         this.numThread = numThread;
         reset();
     }
@@ -1090,4 +1048,3 @@ class UI extends JPanel {
         root.setDefaultButton(runButton);
     }
 }
-
