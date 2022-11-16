@@ -693,14 +693,21 @@ class Surface {
             this.numThread = numThread;
         }
 
+        public boolean check_empty_buckets(){
+            for(buckets : bucketsArray){
+                if (buckets.size() != 0)
+                    return false;
+            }
+            return true;
+        }
+
         @Override
         public void run() {
             LinkedList<Vertex> temp = new LinkedList<Vertex>();
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            for(int count = 0;count < numBuckets; count++){
+            while(! check_empty_buckets()) {
                 while(true){
-
                     requests = findRequests(buckets.get(count), true);
                     temp.addAll(buckets.get(count));
 
@@ -709,6 +716,25 @@ class Surface {
                     for(Request r : requests){
                         messagQueues.get(r.v.hashCode() % numThread).add(r);
                     }
+
+                    try{
+                        barrier.await();
+                    }
+                    catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                    catch (BrokenBarrierException e){
+                        e.printStackTrace();
+                    }
+
+                    // check whether there exists any requests, if there is not, then it means we can already end this while loop
+                    int checksize = 0;
+                    for (ConcurrentLinkedQueue<Request> mq : messagQueues){
+                        if (!mq.isEmpty())
+                            checksize++;
+                    }
+                    if (checksize == 0)
+                        break;
 
                     while(!messagQueues.get(tid).isEmpty()){
                         Request r = messagQueues.get(tid).poll();
@@ -720,8 +746,24 @@ class Surface {
                         }
                     }
 
+                    try{
+                        barrier.await();
+                    }
+                    catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                    catch (BrokenBarrierException e){
+                        e.printStackTrace();
+                    }
+
                     if (buckets.get(count).size() == 0)
                         break;
+                }
+
+                // this time, we need to check the heavy requests
+                requests = findRequests(temp, false);
+                for (Request r : requests){
+                    messagQueues.get(r.v.hashCode() % numThread).add(r);
                 }
 
                 try{
@@ -733,10 +775,9 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-
-                // this time, we need to check the heavy requests
-                requests = findRequests(temp, false);
-                for (Request r : requests){
+                
+                while(!messagQueues.get(tid).isEmpty()){
+                    Request r = messagQueues.get(tid).poll();
                     try{
                         r.relax(tid);
                     }
@@ -754,6 +795,8 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
+
+                if () //if nobody has anything in their bucket and we've gone all the way around the array then break outer loop
                 
             }
         }

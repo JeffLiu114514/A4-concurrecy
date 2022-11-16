@@ -8,7 +8,7 @@ data = dict()
 index = []
 
 print("\nRun N, T exper\n")
-for n in range(4, 49, 8):
+for n in range(100000, 1000000, 300000):
     cur_array = []
     for t in T:
         cur = subprocess.run(["java", "SSSP", "-a", "0", "-n", f"{n}", "-t", f"{t}"], capture_output=True)
