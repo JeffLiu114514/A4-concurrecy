@@ -742,7 +742,6 @@ class Surface {
                         e.printStackTrace();
                     }
 
-                    //incoming request queue
                     while(!messagQueues.get(tid).isEmpty()){
                         Request r = messagQueues.get(tid).poll();
                         try{
@@ -752,14 +751,12 @@ class Surface {
                             e.printStackTrace();
                         }
                     }
-                    //identify light relaxations
-                    requests = findRequests(buckets.get(count), true);
 
-                    //add all in current bucket to temp and clear current bucket
+                    requests = findRequests(buckets.get(count), true);
                     temp.addAll(buckets.get(count));
+
                     buckets.set(count, new LinkedHashSet<Vertex>());
 
-                    //enqueue all light relaxations
                     for(Request r : requests){
                         messagQueues.get(r.v.hashCode() % numThread).add(r);
                     }
@@ -800,14 +797,14 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-                // Find next nonempty bucket.
-                if (count == numBuckets - 1) {
-                    if (check_empty_buckets())
-                        break;
-                    else
-                        count = -1;
-                }
-                count++;
+                // // Find next nonempty bucket.
+                // if (count == numBuckets - 1) {
+                //     if (check_empty_buckets())
+                //         break;
+                //     else
+                //         count = -1;
+                // }
+                // count++;
                 
             }
         }
