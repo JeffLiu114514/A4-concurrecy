@@ -729,7 +729,7 @@ class Surface {
             LinkedList<Vertex> temp = new LinkedList<Vertex>();
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            for(count = 0; count < numBuckets; count++){
+            while(!check_empty_buckets()){
                 while(true){
 
                     try{
