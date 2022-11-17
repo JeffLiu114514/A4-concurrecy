@@ -729,8 +729,8 @@ class Surface {
             LinkedList<Vertex> temp = new LinkedList<Vertex>();
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            while(!check_empty_buckets()){//there are any nonempty buckets
-                while(!check_current_bucket_empty(count)){
+            for(count = 0; count < numBuckets; count++){
+                while(true){
 
                     try{
                         barrier.await();
@@ -742,7 +742,6 @@ class Surface {
                         e.printStackTrace();
                     }
 
-                    //incoming request queue
                     while(!messagQueues.get(tid).isEmpty()){
                         Request r = messagQueues.get(tid).poll();
                         try{
@@ -752,14 +751,12 @@ class Surface {
                             e.printStackTrace();
                         }
                     }
-                    //identify light relaxations
-                    requests = findRequests(buckets.get(count), true);
 
-                    //add all in current bucket to temp and clear current bucket
+                    requests = findRequests(buckets.get(count), true);
                     temp.addAll(buckets.get(count));
+
                     buckets.set(count, new LinkedHashSet<Vertex>());
 
-                    //enqueue all light relaxations
                     for(Request r : requests){
                         messagQueues.get(r.v.hashCode() % numThread).add(r);
                     }
