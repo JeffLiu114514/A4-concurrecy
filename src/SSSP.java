@@ -729,7 +729,7 @@ class Surface {
             LinkedList<Vertex> temp = new LinkedList<Vertex>();
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            for(count = 0; count < numBuckets; count++){
+            while(!check_empty_buckets()){
                 while(true){
 
                     try{
@@ -797,14 +797,14 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-                // // Find next nonempty bucket.
-                // if (count == numBuckets - 1) {
-                //     if (check_empty_buckets())
-                //         break;
-                //     else
-                //         count = -1;
-                // }
-                // count++;
+                // Find next nonempty bucket.
+                if (count == numBuckets - 1) {
+                    if (check_empty_buckets())
+                        break;
+                    else
+                        count = -1;
+                }
+                count++;
                 
             }
         }
