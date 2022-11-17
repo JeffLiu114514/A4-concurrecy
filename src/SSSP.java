@@ -756,9 +756,10 @@ class Surface {
             LinkedList<Request> requests = new LinkedList<Request>();
 
             while (!check_empty_buckets()) {
+
                 LinkedList<Vertex> temp = new LinkedList<Vertex>();
 
-                while (true) {
+                while (buckets.get(count).size() != 0) {
 
                     // identify light relaxations
                     requests = findRequests(buckets.get(count), true);
@@ -780,6 +781,7 @@ class Surface {
                         }
                     }
 
+
                     try {
                         barrier.await();
                     } catch (InterruptedException e) {
@@ -788,8 +790,6 @@ class Surface {
                         e.printStackTrace();
                     }
 
-                    // check whether there exists any requests, if there is not, then it means we
-                    // can already end this while loop
                     if (check_empty_messagQueues()) {
                         break;
                     }
