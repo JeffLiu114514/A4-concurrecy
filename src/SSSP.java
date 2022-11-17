@@ -624,8 +624,8 @@ class Surface {
     int delta;
 
     private int numThread;
-    // we use buketsArray with Vector because Vector can be synchronized but Arraylist can't
-    private Vector<Vector<LinkedHashSet<Vertex>>> bucketsArray;
+    // we use buketsArray to store the buckets
+    private ArrayList<ArrayList<LinkedHashSet<Vertex>>> bucketsArray;
 
     // This is an ArrayList instead of a plain array to avoid the generic
     // array creation error message that stems from Java erasure.
@@ -644,7 +644,7 @@ class Surface {
             Vertex o = e.other(v);
 
             // the only thing we need to change here is to get the right bucket using the tread id
-            Vector<LinkedHashSet<Vertex>> buckets = bucketsArray.get(tid);
+            ArrayList<LinkedHashSet<Vertex>> buckets = bucketsArray.get(tid);
             long altDist = o.distToSource + e.weight;
             if (altDist < v.distToSource) {
                 // Yup; better path home.
@@ -682,8 +682,8 @@ class Surface {
     class ConcurrentRequest implements Runnable{
         private CyclicBarrier barrier;
         private int numThread;
-        // again, it is a Vector because it needs to be synchronized
-        private Vector<LinkedHashSet<Vertex>> buckets;
+        // again, it is a ArrayList because it needs to be synchronized
+        private ArrayList<LinkedHashSet<Vertex>> buckets;
         private int count;
         private int tid;
 
@@ -696,9 +696,9 @@ class Surface {
         }
 
         public boolean check_empty_buckets(){
-            for(Vector<LinkedHashSet<Vertex>> buckets : bucketsArray){
+            for(ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray){
                 for(LinkedHashSet<Vertex> bucket : buckets){
-                    if(!bucket.isEmpty()){
+                    if(bucket.size() != 0){
                         return false;
                     }
                 }
@@ -708,7 +708,7 @@ class Surface {
 
         public boolean check_empty_messagQueues(){
             for(ConcurrentLinkedQueue<Request> messageQueue : messagQueues){
-                if(!messageQueue.isEmpty()){
+                if(messageQueue.size() != 0){
                     return false;
                 }
             }
@@ -716,46 +716,22 @@ class Surface {
         }
 
         public boolean check_current_bucket_empty(int count){
-            for(Vector<LinkedHashSet<Vertex>> buckets : bucketsArray){
-                if(!buckets.get(count).isEmpty()){
+            for(ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray){
+                if(buckets.get(count).size() != 0){
                     return false;
                 }
             }
             return true;
         }
-
+        
         @Override
         public void run() {
             LinkedList<Vertex> temp = new LinkedList<Vertex>();
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            while(!check_empty_buckets()) {
-                while(!check_current_bucket_empty(count)){
+            for(count = 0; count < numBuckets; count++){
+                while(true){
 
-                    // identify light and heavy relaxations associated with vertices in current bucket
-                    requests = findRequests(buckets.get(count), true);
-
-                    // clear my current bucket
-                    buckets.set(count, new LinkedHashSet<Vertex>());
-
-                    temp.addAll(buckets.get(count));
-
-                    // send light relaxations to other threads and perform all the light relaxations that belong to me
-                    for(Request r : requests){
-                        
-                        if (r.v.hashCode() % numThread == tid) {
-                            try{
-                                r.relax(tid);
-                            }
-                            catch (Coordinator.KilledException e){
-                                e.printStackTrace();
-                            }
-                        } else {
-                            messagQueues.get(r.v.hashCode() % numThread).add(r);
-                        }
-                    }
-
-                    //barrier
                     try{
                         barrier.await();
                     }
@@ -765,14 +741,6 @@ class Surface {
                     catch (BrokenBarrierException e){
                         e.printStackTrace();
                     }
-
-                    if (!check_empty_messagQueues()) {
-                        break;
-                    }
-
-
-                    //while my incoming Request queue is nonempty
-                    //take a request out of the queue and do the specified relaxation(s)
 
                     while(!messagQueues.get(tid).isEmpty()){
                         Request r = messagQueues.get(tid).poll();
@@ -784,19 +752,13 @@ class Surface {
                         }
                     }
 
-                    try{
-                        barrier.await();
-                    }
-                    catch (InterruptedException e){
-                        e.printStackTrace();
-                    }
-                    catch (BrokenBarrierException e){
-                        e.printStackTrace();
-                    }
+                    requests = findRequests(buckets.get(count), true);
+                    temp.addAll(buckets.get(count));
 
-                    // if nobody sent anybody any requests then exit inner loop
-                    if (check_empty_messagQueues()) {
-                        break;
+                    buckets.set(count, new LinkedHashSet<Vertex>());
+
+                    for(Request r : requests){
+                        messagQueues.get(r.v.hashCode() % numThread).add(r);
                     }
 
                     try{
@@ -809,40 +771,15 @@ class Surface {
                         e.printStackTrace();
                     }
 
-                    if (buckets.get(count).size() == 0)
+                    // check whether there exists any requests, if there is not, then it means we can already end this while loop
+                    if(check_empty_messagQueues()){
                         break;
+                    }
                 }
 
                 // this time, we need to check the heavy requests
                 requests = findRequests(temp, false);
-
-                // send heavy relaxations to other threads and perform all the heavy relaxations that belong to me
                 for (Request r : requests){
-                    if (r.v.hashCode() % numThread == tid) {
-                        try{
-                            r.relax(tid);
-                        }
-                        catch (Coordinator.KilledException e){
-                            e.printStackTrace();
-                        }
-                    } else {
-                        messagQueues.get(r.v.hashCode() % numThread).add(r);
-                    }
-                }
-
-                //barrier
-                try{
-                    barrier.await();
-                }
-                catch (InterruptedException e){
-                    e.printStackTrace();
-                }
-                catch (BrokenBarrierException e){
-                    e.printStackTrace();
-                }
-                
-                while(!messagQueues.get(tid).isEmpty()){
-                    Request r = messagQueues.get(tid).poll();
                     try{
                         r.relax(tid);
                     }
@@ -860,11 +797,17 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-                count++;
+                // // Find next nonempty bucket.
+                // if (count == numBuckets - 1) {
+                //     if (check_empty_buckets())
+                //         break;
+                //     else
+                //         count = -1;
+                // }
+                // count++;
                 
             }
         }
-
     }
 
     // Main solver routine.
@@ -884,10 +827,10 @@ class Surface {
         // All buckets, together, cover a range of 2 * maxCoord,
         // which is larger than the weight of any edge, so a relaxation
         // will never wrap all the way around the array.
-        bucketsArray = new Vector<>();
+        bucketsArray = new ArrayList<>();
         messagQueues = new ArrayList<>();
         for (int i = 0; i < numThread; i++){
-            bucketsArray.add(new Vector<LinkedHashSet<Vertex>>());
+            bucketsArray.add(new ArrayList<LinkedHashSet<Vertex>>());
             messagQueues.add(new ConcurrentLinkedQueue<Request>());
             for (int j = 0; j < numBuckets; j++){
                 bucketsArray.get(i).add(new LinkedHashSet<Vertex>());
