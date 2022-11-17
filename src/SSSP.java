@@ -726,32 +726,14 @@ class Surface {
         
         @Override
         public void run() {
-            LinkedList<Vertex> temp = new LinkedList<Vertex>();
+            
             LinkedList<Request> requests = new LinkedList<Request>();
 
             while(!check_empty_buckets()){
+                LinkedList<Vertex> temp = new LinkedList<Vertex>();
+                
                 while(true){
 
-                    try{
-                        barrier.await();
-                    }
-                    catch (InterruptedException e){
-                        e.printStackTrace();
-                    }
-                    catch (BrokenBarrierException e){
-                        e.printStackTrace();
-                    }
-
-                    //incoming request queue
-                    while(!messagQueues.get(tid).isEmpty()){
-                        Request r = messagQueues.get(tid).poll();
-                        try{
-                            r.relax(tid);
-                        }
-                        catch (Coordinator.KilledException e){
-                            e.printStackTrace();
-                        }
-                    }
                     //identify light relaxations
                     requests = findRequests(buckets.get(count), true);
 
@@ -759,9 +741,19 @@ class Surface {
                     temp.addAll(buckets.get(count));
                     buckets.set(count, new LinkedHashSet<Vertex>());
 
+
                     //enqueue all light relaxations
                     for(Request r : requests){
-                        messagQueues.get(r.v.hashCode() % numThread).add(r);
+                        if (r.v.hashCode() % numThread == tid) {
+                            try{
+                                r.relax(tid);
+                            }
+                            catch (Coordinator.KilledException e){
+                                e.printStackTrace();
+                            }
+                        } else {
+                            messagQueues.get(r.v.hashCode() % numThread).add(r);
+                        }
                     }
 
                     try{
@@ -778,19 +770,52 @@ class Surface {
                     if(check_empty_messagQueues()){
                         break;
                     }
-                }
 
-                // this time, we need to check the heavy requests
-                requests = findRequests(temp, false);
-                for (Request r : requests){
-                    try{
-                        r.relax(tid);
+                    //incoming request queue
+                    while(!messagQueues.get(tid).isEmpty()){
+                        Request r = messagQueues.get(tid).poll();
+                        try{
+                            r.relax(tid);
+                        }
+                        catch (Coordinator.KilledException e){
+                            e.printStackTrace();
+                        }
                     }
-                    catch (Coordinator.KilledException e){
+
+
+                    try{
+                        barrier.await();
+                    }
+                    catch (InterruptedException e){
                         e.printStackTrace();
                     }
+                    catch (BrokenBarrierException e){
+                        e.printStackTrace();
+                    }
+
+                    if(check_current_bucket_empty(count)){
+                        break;
+                    }
+
+                }
+                
+                // this time, we need to check the heavy requests
+                requests = findRequests(temp, false);
+                //enqueue all heavy relaxationsuests
+                for(Request r : requests){
+                    if (r.v.hashCode() % numThread == tid) {
+                        try{
+                            r.relax(tid);
+                        }
+                        catch (Coordinator.KilledException e){
+                            e.printStackTrace();
+                        }
+                    } else {
+                        messagQueues.get(r.v.hashCode() % numThread).add(r);
+                    }
                 }
 
+                //barrier
                 try{
                     barrier.await();
                 }
@@ -800,14 +825,44 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-                // Find next nonempty bucket.
-                if (count == numBuckets - 1) {
-                    if (check_empty_buckets())
-                        break;
-                    else
-                        count = -1;
+
+                //while my incoming queue is not empty
+                while(!messagQueues.get(tid).isEmpty()){
+                    Request r = messagQueues.get(tid).poll();
+                    try{
+                        r.relax(tid);
+                    }
+                    catch (Coordinator.KilledException e){
+                        e.printStackTrace();
+                    }
                 }
-                count++;
+
+                boolean ifbreak = false;
+
+                while(true){
+                    count++;
+                    //barrier
+                    try{
+                        barrier.await();
+                    }
+                    catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                    catch (BrokenBarrierException e){
+                        e.printStackTrace();
+                    }
+                    if (check_empty_buckets()){
+                        ifbreak = true;
+                        break;
+                    }
+                    
+                    if (buckets.get(count).size() != 0){
+                        break;
+                    }
+                }
+                if(ifbreak){
+                    break;
+                }
                 
             }
         }
@@ -842,6 +897,7 @@ class Surface {
         
         //set the source vertex
         bucketsArray.get(0).get(0).add(vertices[0]);
+        
         Thread[] threads = new Thread[numThread];
         CyclicBarrier barrier = new CyclicBarrier(numThread);
 
