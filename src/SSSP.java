@@ -684,19 +684,42 @@ class Surface {
         private int numThread;
         // again, it is a Vector because it needs to be synchronized
         private Vector<LinkedHashSet<Vertex>> buckets;
+        private int count;
         private int tid;
 
         public ConcurrentRequest(CyclicBarrier barrier, int tid, int numThread) {
             this.barrier = barrier;
             this.tid = tid;
+            this.count = 0;
             this.buckets = bucketsArray.get(tid);
             this.numThread = numThread;
         }
 
         public boolean check_empty_buckets(){
-            for(buckets : bucketsArray){
-                if (buckets.size() != 0)
+            for(Vector<LinkedHashSet<Vertex>> buckets : bucketsArray){
+                for(LinkedHashSet<Vertex> bucket : buckets){
+                    if(!bucket.isEmpty()){
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        public boolean check_empty_messagQueues(){
+            for(ConcurrentLinkedQueue<Request> messageQueue : messagQueues){
+                if(!messageQueue.isEmpty()){
                     return false;
+                }
+            }
+            return true;
+        }
+
+        public boolean check_current_bucket_empty(int count){
+            for(Vector<LinkedHashSet<Vertex>> buckets : bucketsArray){
+                if(!buckets.get(count).isEmpty()){
+                    return false;
+                }
             }
             return true;
         }
@@ -706,17 +729,33 @@ class Surface {
             LinkedList<Vertex> temp = new LinkedList<Vertex>();
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            while(! check_empty_buckets()) {
-                while(true){
-                    requests = findRequests(buckets.get(count), true);
-                    temp.addAll(buckets.get(count));
+            while(!check_empty_buckets()) {
+                while(!check_current_bucket_empty(count)){
 
+                    // identify light and heavy relaxations associated with vertices in current bucket
+                    requests = findRequests(buckets.get(count), true);
+
+                    // clear my current bucket
                     buckets.set(count, new LinkedHashSet<Vertex>());
 
+                    temp.addAll(buckets.get(count));
+
+                    // send light relaxations to other threads and perform all the light relaxations that belong to me
                     for(Request r : requests){
-                        messagQueues.get(r.v.hashCode() % numThread).add(r);
+                        
+                        if (r.v.hashCode() % numThread == tid) {
+                            try{
+                                r.relax(tid);
+                            }
+                            catch (Coordinator.KilledException e){
+                                e.printStackTrace();
+                            }
+                        } else {
+                            messagQueues.get(r.v.hashCode() % numThread).add(r);
+                        }
                     }
 
+                    //barrier
                     try{
                         barrier.await();
                     }
@@ -727,14 +766,13 @@ class Surface {
                         e.printStackTrace();
                     }
 
-                    // check whether there exists any requests, if there is not, then it means we can already end this while loop
-                    int checksize = 0;
-                    for (ConcurrentLinkedQueue<Request> mq : messagQueues){
-                        if (!mq.isEmpty())
-                            checksize++;
-                    }
-                    if (checksize == 0)
+                    if (!check_empty_messagQueues()) {
                         break;
+                    }
+
+
+                    //while my incoming Request queue is nonempty
+                    //take a request out of the queue and do the specified relaxation(s)
 
                     while(!messagQueues.get(tid).isEmpty()){
                         Request r = messagQueues.get(tid).poll();
@@ -756,16 +794,43 @@ class Surface {
                         e.printStackTrace();
                     }
 
+                    // if nobody sent anybody any requests then exit inner loop
+                    if (check_empty_messagQueues()) {
+                        break;
+                    }
+
+                    try{
+                        barrier.await();
+                    }
+                    catch (InterruptedException e){
+                        e.printStackTrace();
+                    }
+                    catch (BrokenBarrierException e){
+                        e.printStackTrace();
+                    }
+
                     if (buckets.get(count).size() == 0)
                         break;
                 }
 
                 // this time, we need to check the heavy requests
                 requests = findRequests(temp, false);
+
+                // send heavy relaxations to other threads and perform all the heavy relaxations that belong to me
                 for (Request r : requests){
-                    messagQueues.get(r.v.hashCode() % numThread).add(r);
+                    if (r.v.hashCode() % numThread == tid) {
+                        try{
+                            r.relax(tid);
+                        }
+                        catch (Coordinator.KilledException e){
+                            e.printStackTrace();
+                        }
+                    } else {
+                        messagQueues.get(r.v.hashCode() % numThread).add(r);
+                    }
                 }
 
+                //barrier
                 try{
                     barrier.await();
                 }
@@ -795,8 +860,7 @@ class Surface {
                 catch (BrokenBarrierException e){
                     e.printStackTrace();
                 }
-
-                if () //if nobody has anything in their bucket and we've gone all the way around the array then break outer loop
+                count++;
                 
             }
         }
