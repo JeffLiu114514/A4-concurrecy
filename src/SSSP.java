@@ -27,38 +27,37 @@ import java.util.concurrent.CyclicBarrier;
 import java.lang.*;
 
 public class SSSP {
-    private static int n = 50;              // default number of vertices
-    private static double geom = 1.0;       // default degree of geometric reality
+    private static int n = 50; // default number of vertices
+    private static double geom = 1.0; // default degree of geometric reality
     // 0 means random edge weight; 1 means fully geometric distance
-    private static int degree = 5;          // expected number of neighbors per vertex
+    private static int degree = 5; // expected number of neighbors per vertex
     // (near the middle of the graph)
-    private static long sd = 0;             // default random number seed
-    private static int numThreads = 0;      // zero means use Dijkstra's alg;
-    public static int delta = -1;           // delta for delta stepping
+    private static long sd = 0; // default random number seed
+    private static int numThreads = 0; // zero means use Dijkstra's alg;
+    public static int delta = -1; // delta for delta stepping
     // positive means use Delta stepping
 
-    private static final int TIMING_ONLY    = 0;
-    private static final int PRINT_EVENTS   = 1;
-    private static final int SHOW_RESULT    = 2;
+    private static final int TIMING_ONLY = 0;
+    private static final int PRINT_EVENTS = 1;
+    private static final int SHOW_RESULT = 2;
     private static final int FULL_ANIMATION = 3;
-    private static int animate = TIMING_ONLY;       // default
+    private static int animate = TIMING_ONLY; // default
 
-    private static final String help =
-            "-a [0123] annimation mode:\n"
-                    + "    0 -> timing only\n"
-                    + "    1 -> print events only\n"
-                    + "    2 -> show result\n"
-                    + "    3 -> full animation\n"
-                    + "-n <number of vertices>\n"
-                    + "-d <expected vertex degree>\n"
-                    + "    (for vertices near the middle of large graphs)\n"
-                    + "-g <degree of geometric realism>\n"
-                    + "    (real number between 0 and 1)\n"
-                    + "-s <random number seed>\n"
-                    + "-t <number of threads>\n"
-                    + "    (0 means use Dijkstra's algorithm on one thread)\n"
-                    + "-v  (print this message)\n"
-                    + "-D  get the delta manually\n";
+    private static final String help = "-a [0123] annimation mode:\n"
+            + "    0 -> timing only\n"
+            + "    1 -> print events only\n"
+            + "    2 -> show result\n"
+            + "    3 -> full animation\n"
+            + "-n <number of vertices>\n"
+            + "-d <expected vertex degree>\n"
+            + "    (for vertices near the middle of large graphs)\n"
+            + "-g <degree of geometric realism>\n"
+            + "    (real number between 0 and 1)\n"
+            + "-s <random number seed>\n"
+            + "-t <number of threads>\n"
+            + "    (0 means use Dijkstra's algorithm on one thread)\n"
+            + "-v  (print this message)\n"
+            + "-D  get the delta manually\n";
 
     // Examine command-line arguments for alternative running modes.
     //
@@ -71,7 +70,8 @@ public class SSSP {
                     int an = -1;
                     try {
                         an = Integer.parseInt(args[i]);
-                    } catch (NumberFormatException e) { }
+                    } catch (NumberFormatException e) {
+                    }
                     if (an >= TIMING_ONLY && an <= FULL_ANIMATION) {
                         animate = an;
                     } else {
@@ -86,7 +86,8 @@ public class SSSP {
                     int np = -1;
                     try {
                         np = Integer.parseInt(args[i]);
-                    } catch (NumberFormatException e) { }
+                    } catch (NumberFormatException e) {
+                    }
                     if (np > 0) {
                         n = np;
                     } else {
@@ -101,7 +102,8 @@ public class SSSP {
                     int d = -1;
                     try {
                         d = Integer.parseInt(args[i]);
-                    } catch (NumberFormatException e) { }
+                    } catch (NumberFormatException e) {
+                    }
                     if (d > 0) {
                         degree = d;
                     } else {
@@ -116,7 +118,8 @@ public class SSSP {
                     double g = -1.0;
                     try {
                         g = Double.parseDouble(args[i]);
-                    } catch (NumberFormatException e) { }
+                    } catch (NumberFormatException e) {
+                    }
                     if (g >= 0 && g <= 1) {
                         geom = g;
                     } else {
@@ -141,7 +144,8 @@ public class SSSP {
                     int nt = -1;
                     try {
                         nt = Integer.parseInt(args[i]);
-                    } catch (NumberFormatException e) { }
+                    } catch (NumberFormatException e) {
+                    }
                     if (nt >= 0) {
                         numThreads = nt;
                     } else {
@@ -150,14 +154,15 @@ public class SSSP {
                     }
                 }
 
-            }else if (args[i].equals("-D")) {
+            } else if (args[i].equals("-D")) {
                 if (++i >= args.length) {
                     System.err.print("Missing the value for delta\n");
                 } else {
                     int nt = -1;
                     try {
                         nt = Integer.parseInt(args[i]);
-                    } catch (NumberFormatException e) { }
+                    } catch (NumberFormatException e) {
+                    }
                     if (nt >= 0) {
                         delta = nt;
                     } else {
@@ -165,8 +170,8 @@ public class SSSP {
                                 args[i]);
                     }
                 }
-                
-            }else if (args[i].equals("-v")) {
+
+            } else if (args[i].equals("-v")) {
                 System.err.print(help);
                 System.exit(0);
             } else {
@@ -194,19 +199,22 @@ public class SSSP {
                         public void run(int x1, int y1, int x2, int y2, boolean dum, long w) {
                             System.out.printf("selected  %12d %12d %12d %12d %12d\n",
                                     x1, y1, x2, y2, w);
-                        }},
+                        }
+                    },
                     new Surface.EdgeRoutine() {
                         public void run(int x1, int y1, int x2, int y2, boolean dum, long w) {
                             System.out.printf("unselected  %12d %12d %12d %12d %12d\n",
                                     x1, y1, x2, y2, w);
-                        }});
+                        }
+                    });
         } else if (an == FULL_ANIMATION) {
             Surface.EdgeRoutine er = new Surface.EdgeRoutine() {
                 public void run(int x1, int y1, int x2, int y2, boolean dum, long w)
                         throws Coordinator.KilledException {
                     c.hesitate();
-                    a.repaint();        // graphics need to be re-rendered
-                }};
+                    a.repaint(); // graphics need to be re-rendered
+                }
+            };
             s.setHooks(er, er);
         }
         return s;
@@ -240,11 +248,12 @@ public class SSSP {
                 } else {
                     s.DeltaSolve();
                 }
-            } catch(Coordinator.KilledException e) { }
+            } catch (Coordinator.KilledException e) {
+            }
             long endTime = new Date().getTime();
-            System.out.printf(//"elapsed time: %.3f seconds\n",
-                    "%.3f", 
-                    (double) (endTime-startTime)/1000);
+            System.out.printf(// "elapsed time: %.3f seconds\n",
+                    "%.3f",
+                    (double) (endTime - startTime) / 1000);
         }
     }
 }
@@ -258,18 +267,18 @@ class Worker extends Thread {
     private final Coordinator c;
     private final UI u;
     private final Animation a;
-    private final boolean dijkstra;     // Dijkstra = !Delta
+    private final boolean dijkstra; // Dijkstra = !Delta
 
     // The run() method of a Java Thread is never invoked directly by
-    // user code.  Rather, it is called by the Java runtime when user
+    // user code. Rather, it is called by the Java runtime when user
     // code calls start().
     //
     // The run() method of a worker thread *must* begin by calling
-    // c.register() and end by calling c.unregister().  These allow the
+    // c.register() and end by calling c.unregister(). These allow the
     // user interface (via the Coordinator) to pause and terminate
-    // workers.  Note how the worker is set up to catch KilledException.
+    // workers. Note how the worker is set up to catch KilledException.
     // In the process of unwinding back to here we'll cleanly and
-    // automatically release any monitor locks.  If you create new kinds
+    // automatically release any monitor locks. If you create new kinds
     // of workers (as part of a parallel solver), make sure they call
     // c.register() and c.unregister() properly.
     //
@@ -282,10 +291,11 @@ class Worker extends Thread {
                 s.DeltaSolve();
             }
             c.unregister();
-        } catch(Coordinator.KilledException e) { }
+        } catch (Coordinator.KilledException e) {
+        }
         if (a != null) {
             // Tell the graphics event thread to unset the default
-            // button when it gets a chance.  (Threads other than the
+            // button when it gets a chance. (Threads other than the
             // event thread cannot safely modify the GUI directly.)
             a.repaint();
             SwingUtilities.invokeLater(new Runnable() {
@@ -313,23 +323,23 @@ class Worker extends Thread {
 class Surface {
     // all X and Y coordinates will be in the range [0..2^28)
     public static final int minCoord = 0;
-    public static final int maxCoord = 1024*1024*256;
+    public static final int maxCoord = 1024 * 1024 * 256;
 
     // The following 9 fields are set by the Surface constructor.
     private final Coordinator coord;
     // Not needed at present, but will need to be passed to any
     // newly created workers.
-    private final int n;  // number of vertices
+    private final int n; // number of vertices
     private final Vertex vertices[];
     // Main array of vertices, used for partitioning and rendering.
     private final HashSet<Vertex> vertexHash;
     // Used to ensure that we never have two vertices directly on top of
-    // each other.  See Vertex.hashCode and Vertex.equals below.
+    // each other. See Vertex.hashCode and Vertex.equals below.
     private final Vector<Edge> edges;
     private long sd = 0;
-    private double geom;        // degree of geometric realism
-    private int degree;         // desired average node degree
-    private final Random prn;   // pseudo-random number generator
+    private double geom; // degree of geometric realism
+    private int degree; // desired average node degree
+    private final Random prn; // pseudo-random number generator
 
     private class Vertex {
         public final int xCoord;
@@ -353,15 +363,17 @@ class Surface {
         public int hashCode() {
             return xCoord ^ yCoord;
         }
+
         public boolean equals(Object o) {
-            Vertex v = (Vertex) o;            // run-time type check
+            Vertex v = (Vertex) o; // run-time type check
             return v.xCoord == xCoord && v.yCoord == yCoord;
         }
 
         // Constructor
         //
         public Vertex(int x, int y) {
-            xCoord = x;  yCoord = y;
+            xCoord = x;
+            yCoord = y;
             neighbors = new Vector<Edge>();
             distToSource = Long.MAX_VALUE;
             predecessor = null;
@@ -369,11 +381,11 @@ class Surface {
     }
 
     // In a purely offline SSSP algorithm we probably wouldn't need an
-    // explicit edge class.  Having one makes the graphics a lot more
+    // explicit edge class. Having one makes the graphics a lot more
     // straightforward, though.
     //
     private class Edge {
-        public final Vertex v1;  // vertices are in arbitrary order
+        public final Vertex v1; // vertices are in arbitrary order
         public final Vertex v2;
         public final int weight;
         private boolean selected;
@@ -404,7 +416,10 @@ class Surface {
         // Constructor
         //
         public Edge(Vertex first, Vertex second, int w) {
-            v1 = first;  v2 = second;  weight = w;  selected = false;
+            v1 = first;
+            v2 = second;
+            weight = w;
+            selected = false;
         }
     }
 
@@ -415,7 +430,8 @@ class Surface {
         public void run(int x1, int y1, int x2, int y2, boolean selected, long weight)
                 throws Coordinator.KilledException;
     }
-    public interface VertexRoutine{
+
+    public interface VertexRoutine {
         public void run(int x, int y);
     }
 
@@ -433,7 +449,8 @@ class Surface {
         for (Edge e : edges) {
             try {
                 pr.run(e.v1.xCoord, e.v1.yCoord, e.v2.xCoord, e.v2.yCoord, e.selected, 0);
-            } catch (Coordinator.KilledException f) { }
+            } catch (Coordinator.KilledException f) {
+            }
         }
     }
 
@@ -468,17 +485,19 @@ class Surface {
     }
 
     // 2-dimensional array of buckets into which to put geometrically
-    // proximal vertices.  Sadly, requires suppression of unchecked cast
-    // warnings.  (I could get around that with a an ArrayList of
+    // proximal vertices. Sadly, requires suppression of unchecked cast
+    // warnings. (I could get around that with a an ArrayList of
     // ArrayLists, but that gets really messy...)
     //
     class CheckerBoard {
         private Object[][] cb;
+
         @SuppressWarnings("unchecked")
         public Vector<Vertex> get(int i, int j) {
-            return (Vector<Vertex>)(cb[i][j]);
+            return (Vector<Vertex>) (cb[i][j]);
         }
-        public CheckerBoard (int k) {
+
+        public CheckerBoard(int k) {
             cb = new Object[k][k];
             // Really Vector<Vertex>, but Java erasure makes that illegal.
             for (int i = 0; i < k; ++i) {
@@ -493,17 +512,17 @@ class Surface {
     //
     public void reset() {
         // As a heuristic, I want to connect each vertex to about 1/4 of
-        // its geometrically nearby vertices.  So I want to choose
+        // its geometrically nearby vertices. So I want to choose
         // neighbors from a region containing about 4*degree vertices.
         // I divide the plane into a k x k grid, such that a 3x3 subset
         // has about the right number of vertices from which to choose.
-        final int k = (int) (Math.sqrt((double)n/(double)degree) * 3 / 2);
-        final int sw = (int) Math.ceil((double)maxCoord/(double)k);     // square width;
+        final int k = (int) (Math.sqrt((double) n / (double) degree) * 3 / 2);
+        final int sw = (int) Math.ceil((double) maxCoord / (double) k); // square width;
         CheckerBoard cb = new CheckerBoard(k);
 
         prn.setSeed(sd);
-        vertexHash.clear();     // empty out the set of vertices
-        edges.clear();          // and edges
+        vertexHash.clear(); // empty out the set of vertices
+        edges.clear(); // and edges
         for (int i = 0; i < n; i++) {
             Vertex v;
             int x;
@@ -515,25 +534,27 @@ class Surface {
             } while (vertexHash.contains(v));
             vertexHash.add(v);
             vertices[i] = v;
-            cb.get(x/sw, y/sw).add(v);
+            cb.get(x / sw, y / sw).add(v);
         }
-        vertices[0].distToSource = 0;   // vertex 0 is the source
+        vertices[0].distToSource = 0; // vertex 0 is the source
 
         // create edges
         for (Vertex v : vertices) {
             int xb = v.xCoord / sw;
             int yb = v.yCoord / sw;
             // Find 3x3 area from which to draw neighbors.
-            int xl;  int xh;
-            int yl;  int yh;
+            int xl;
+            int xh;
+            int yl;
+            int yh;
             if (k < 3) {
                 xl = yl = 0;
-                xh = yh = k-1;
+                xh = yh = k - 1;
             } else {
-                xl = (xb == 0) ? 0 : ((xb == k-1) ? k-3 : (xb-1));
-                xh = (xb == 0) ? 2 : ((xb == k-1) ? k-1 : (xb+1));
-                yl = (yb == 0) ? 0 : ((yb == k-1) ? k-3 : (yb-1));
-                yh = (yb == 0) ? 2 : ((yb == k-1) ? k-1 : (yb+1));
+                xl = (xb == 0) ? 0 : ((xb == k - 1) ? k - 3 : (xb - 1));
+                xh = (xb == 0) ? 2 : ((xb == k - 1) ? k - 1 : (xb + 1));
+                yl = (yb == 0) ? 0 : ((yb == k - 1) ? k - 3 : (yb - 1));
+                yh = (yb == 0) ? 2 : ((yb == k - 1) ? k - 1 : (yb + 1));
             }
             for (int i = xl; i <= xh; ++i) {
                 for (int j = yl; j <= yh; ++j) {
@@ -545,8 +566,8 @@ class Surface {
                             // Invent a weight.
                             int dist = euclideanDistance(u, v);
                             int randWeight = Math.abs(prn.nextInt()) % (maxCoord * 2);
-                            int weight = (int) ((geom * (double)dist)
-                                    + ((1.0 - geom) * (double)randWeight));
+                            int weight = (int) ((geom * (double) dist)
+                                    + ((1.0 - geom) * (double) randWeight));
                             // Pick u as neighbor.
                             Edge e = new Edge(u, v, weight);
                             u.addNeighbor(e);
@@ -567,9 +588,9 @@ class Surface {
     // support, because it doesn't export references to its internal tree nodes.
     // The workaround here, due to Jackson Abascal, adds an extra distance field,
     // "weight," which is equal to v.distToSource when v is first inserted in the
-    // PQ, but keeps its value even when v.distToSoure is reduced.  When we want
+    // PQ, but keeps its value even when v.distToSoure is reduced. When we want
     // to reduce a key, we simply insert the vertex again, and leave the old
-    // reference in place.  The old one has a weight that's worse than
+    // reference in place. The old one has a weight that's worse than
     // v.distToSource, allowing us to skip over it.
     //
     class WeightedVertex implements Comparable<WeightedVertex> {
@@ -582,15 +603,16 @@ class Surface {
         }
 
         public int compareTo(WeightedVertex other) {
-            if (weight < other.weight) return -1;
-            if (weight == other.weight) return 0;
+            if (weight < other.weight)
+                return -1;
+            if (weight == other.weight)
+                return 0;
             return 1;
         }
     }
 
     public void DijkstraSolve() throws Coordinator.KilledException {
-        PriorityQueue<WeightedVertex> pq =
-                new PriorityQueue<WeightedVertex>((n * 12) / 10);
+        PriorityQueue<WeightedVertex> pq = new PriorityQueue<WeightedVertex>((n * 12) / 10);
         // Leave some room for extra umremoved entries.
         vertices[0].distToSource = 0;
         // All other vertices still have maximal distToSource, as set by constructor.
@@ -629,8 +651,10 @@ class Surface {
 
     // This is an ArrayList instead of a plain array to avoid the generic
     // array creation error message that stems from Java erasure.
-    // we use a linked queue to keep track of the updates that will work concurrently
+    // we use a linked queue to keep track of the updates that will work
+    // concurrently
     private ArrayList<ConcurrentLinkedQueue<Request>> messagQueues;
+
     // A Request is a potential relaxation.
     //
     class Request {
@@ -643,24 +667,26 @@ class Surface {
         public void relax(int tid) throws Coordinator.KilledException {
             Vertex o = e.other(v);
 
-            // the only thing we need to change here is to get the right bucket using the tread id
+            // the only thing we need to change here is to get the right bucket using the
+            // tread id
             ArrayList<LinkedHashSet<Vertex>> buckets = bucketsArray.get(tid);
             long altDist = o.distToSource + e.weight;
             if (altDist < v.distToSource) {
                 // Yup; better path home.
-                buckets.get((int)((v.distToSource / delta) % numBuckets)).remove(v);
+                buckets.get((int) ((v.distToSource / delta) % numBuckets)).remove(v);
                 v.distToSource = altDist;
                 if (v.predecessor != null) {
                     v.predecessor.unselect();
                 }
                 v.predecessor = e;
                 e.select();
-                buckets.get((int)((altDist / delta) % numBuckets)).add(v);
+                buckets.get((int) ((altDist / delta) % numBuckets)).add(v);
             }
         }
 
         public Request(Vertex V, Edge E) {
-            v = V;  e = E;
+            v = V;
+            e = E;
         }
     }
 
@@ -679,7 +705,7 @@ class Surface {
         return rtn;
     }
 
-    class ConcurrentRequest implements Runnable{
+    class ConcurrentRequest implements Runnable {
         private CyclicBarrier barrier;
         private int numThread;
         // again, it is a ArrayList because it needs to be synchronized
@@ -695,10 +721,10 @@ class Surface {
             this.numThread = numThread;
         }
 
-        public boolean check_empty_buckets(){
-            for(ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray){
-                for(LinkedHashSet<Vertex> bucket : buckets){
-                    if(bucket.size() != 0){
+        public boolean check_empty_buckets() {
+            for (ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray) {
+                for (LinkedHashSet<Vertex> bucket : buckets) {
+                    if (bucket.size() != 0) {
                         return false;
                     }
                 }
@@ -706,49 +732,47 @@ class Surface {
             return true;
         }
 
-        public boolean check_empty_messagQueues(){
-            for(ConcurrentLinkedQueue<Request> messageQueue : messagQueues){
-                if(messageQueue.size() != 0){
+        public boolean check_empty_messagQueues() {
+            for (ConcurrentLinkedQueue<Request> messageQueue : messagQueues) {
+                if (messageQueue.size() != 0) {
                     return false;
                 }
             }
             return true;
         }
 
-        public boolean check_current_bucket_empty(int count){
-            for(ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray){
-                if(buckets.get(count).size() != 0){
+        public boolean check_current_bucket_empty(int count) {
+            for (ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray) {
+                if (buckets.get(count).size() != 0) {
                     return false;
                 }
             }
             return true;
         }
-        
+
         @Override
         public void run() {
-            
+
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            while(!check_empty_buckets()){
+            while (!check_empty_buckets()) {
                 LinkedList<Vertex> temp = new LinkedList<Vertex>();
-                
-                while(true){
 
-                    //identify light relaxations
+                while (true) {
+
+                    // identify light relaxations
                     requests = findRequests(buckets.get(count), true);
 
-                    //add all in current bucket to temp and clear current bucket
+                    // add all in current bucket to temp and clear current bucket
                     temp.addAll(buckets.get(count));
                     buckets.set(count, new LinkedHashSet<Vertex>());
 
-
-                    //enqueue all light relaxations
-                    for(Request r : requests){
+                    // enqueue all light relaxations
+                    for (Request r : requests) {
                         if (r.v.hashCode() % numThread == tid) {
-                            try{
+                            try {
                                 r.relax(tid);
-                            }
-                            catch (Coordinator.KilledException e){
+                            } catch (Coordinator.KilledException e) {
                                 e.printStackTrace();
                             }
                         } else {
@@ -756,58 +780,52 @@ class Surface {
                         }
                     }
 
-                    try{
+                    try {
                         barrier.await();
-                    }
-                    catch (InterruptedException e){
+                    } catch (InterruptedException e) {
                         e.printStackTrace();
-                    }
-                    catch (BrokenBarrierException e){
+                    } catch (BrokenBarrierException e) {
                         e.printStackTrace();
                     }
 
-                    // check whether there exists any requests, if there is not, then it means we can already end this while loop
-                    if(check_empty_messagQueues()){
+                    // check whether there exists any requests, if there is not, then it means we
+                    // can already end this while loop
+                    if (check_empty_messagQueues()) {
                         break;
                     }
 
-                    //incoming request queue
-                    while(!messagQueues.get(tid).isEmpty()){
+                    // incoming request queue
+                    while (!messagQueues.get(tid).isEmpty()) {
                         Request r = messagQueues.get(tid).poll();
-                        try{
+                        try {
                             r.relax(tid);
-                        }
-                        catch (Coordinator.KilledException e){
+                        } catch (Coordinator.KilledException e) {
                             e.printStackTrace();
                         }
                     }
 
-
-                    try{
+                    try {
                         barrier.await();
-                    }
-                    catch (InterruptedException e){
+                    } catch (InterruptedException e) {
                         e.printStackTrace();
-                    }
-                    catch (BrokenBarrierException e){
+                    } catch (BrokenBarrierException e) {
                         e.printStackTrace();
                     }
 
-                    if(check_current_bucket_empty(count)){
+                    if (check_current_bucket_empty(count)) {
                         break;
                     }
 
                 }
-                
+
                 // this time, we need to check the heavy requests
                 requests = findRequests(temp, false);
-                //enqueue all heavy relaxationsuests
-                for(Request r : requests){
+                // enqueue all heavy relaxationsuests
+                for (Request r : requests) {
                     if (r.v.hashCode() % numThread == tid) {
-                        try{
+                        try {
                             r.relax(tid);
-                        }
-                        catch (Coordinator.KilledException e){
+                        } catch (Coordinator.KilledException e) {
                             e.printStackTrace();
                         }
                     } else {
@@ -815,55 +833,50 @@ class Surface {
                     }
                 }
 
-                //barrier
-                try{
+                // barrier
+                try {
                     barrier.await();
-                }
-                catch (InterruptedException e){
+                } catch (InterruptedException e) {
                     e.printStackTrace();
-                }
-                catch (BrokenBarrierException e){
+                } catch (BrokenBarrierException e) {
                     e.printStackTrace();
                 }
 
-                //while my incoming queue is not empty
-                while(!messagQueues.get(tid).isEmpty()){
+                // while my incoming queue is not empty
+                while (!messagQueues.get(tid).isEmpty()) {
                     Request r = messagQueues.get(tid).poll();
-                    try{
+                    try {
                         r.relax(tid);
-                    }
-                    catch (Coordinator.KilledException e){
+                    } catch (Coordinator.KilledException e) {
                         e.printStackTrace();
                     }
                 }
 
                 boolean ifbreak = false;
 
-                while(true){
+                while (true) {
                     count++;
-                    //barrier
-                    try{
+                    // barrier
+                    try {
                         barrier.await();
-                    }
-                    catch (InterruptedException e){
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    } catch (BrokenBarrierException e) {
                         e.printStackTrace();
                     }
-                    catch (BrokenBarrierException e){
-                        e.printStackTrace();
-                    }
-                    if (check_empty_buckets()){
+                    if (check_empty_buckets()) {
                         ifbreak = true;
                         break;
                     }
-                    
-                    if (buckets.get(count).size() != 0){
+
+                    if (buckets.get(count).size() != 0) {
                         break;
                     }
                 }
-                if(ifbreak){
+                if (ifbreak) {
                     break;
                 }
-                
+
             }
         }
     }
@@ -874,30 +887,30 @@ class Surface {
         numBuckets = 2 * degree;
         if (delta == -1)
             delta = maxCoord / degree;
-        else{
-            int div = maxCoord *2;
-            if (delta > div) 
+        else {
+            int div = maxCoord * 2;
+            if (delta > div)
                 numBuckets = 1;
             else
-                numBuckets = div / delta + 1; 
+                numBuckets = div / delta + 1;
         }
-        
+
         // All buckets, together, cover a range of 2 * maxCoord,
         // which is larger than the weight of any edge, so a relaxation
         // will never wrap all the way around the array.
         bucketsArray = new ArrayList<>();
         messagQueues = new ArrayList<>();
-        for (int i = 0; i < numThread; i++){
+        for (int i = 0; i < numThread; i++) {
             bucketsArray.add(new ArrayList<LinkedHashSet<Vertex>>());
             messagQueues.add(new ConcurrentLinkedQueue<Request>());
-            for (int j = 0; j < numBuckets; j++){
+            for (int j = 0; j < numBuckets; j++) {
                 bucketsArray.get(i).add(new LinkedHashSet<Vertex>());
             }
         }
-        
-        //set the source vertex
+
+        // set the source vertex
         bucketsArray.get(0).get(0).add(vertices[0]);
-        
+
         Thread[] threads = new Thread[numThread];
         CyclicBarrier barrier = new CyclicBarrier(numThread);
 
@@ -929,7 +942,6 @@ class Surface {
         degree = D;
         coord = C;
 
-
         vertices = new Vertex[n];
         vertexHash = new HashSet<Vertex>(n);
         edges = new Vector<Edge>();
@@ -944,7 +956,7 @@ class Surface {
 // Class Animation is the one really complicated sub-pane of the user interface.
 //
 class Animation extends JPanel {
-    private static final int width = 512;      // canvas dimensions
+    private static final int width = 512; // canvas dimensions
     private static final int height = 512;
     private static final int dotsize = 6;
     private static final int border = dotsize;
@@ -955,25 +967,24 @@ class Animation extends JPanel {
     // of x and y values among all vertices.
     //
     private int xPosition(int x) {
-        return (int)
-                (((double)x) * (double)width / (double)s.maxCoord) + border;
+        return (int) (((double) x) * (double) width / (double) s.maxCoord) + border;
     }
+
     private int yPosition(int y) {
-        return (int)
-                (((double)s.maxCoord - (double)y) * (double)height
-                        / ((double)s.maxCoord)) + border;
+        return (int) (((double) s.maxCoord - (double) y) * (double) height
+                / ((double) s.maxCoord)) + border;
     }
 
     // The following method is called automatically by the graphics
     // system when it thinks the Animation canvas needs to be
-    // re-displayed.  This can happen because code elsewhere in this
+    // re-displayed. This can happen because code elsewhere in this
     // program called repaint(), or because of hiding/revealing or
     // open/close operations in the surrounding window system.
     //
     public void paintComponent(final Graphics g) {
         final Graphics2D g2 = (Graphics2D) g;
 
-        super.paintComponent(g);    // clears panel
+        super.paintComponent(g); // clears panel
         s.forAllEdges(new Surface.EdgeRoutine() {
             public void run(int x1, int y1, int x2, int y2, boolean bold, long w) {
                 if (bold) {
@@ -990,7 +1001,7 @@ class Animation extends JPanel {
         s.forAllVertices(new Surface.VertexRoutine() {
             public void run(int x, int y) {
                 g2.setPaint(Color.blue);
-                g.fillOval(xPosition(x)-dotsize/2, yPosition(y)-dotsize/2,
+                g.fillOval(xPosition(x) - dotsize / 2, yPosition(y) - dotsize / 2,
                         dotsize, dotsize);
             }
         });
@@ -998,12 +1009,12 @@ class Animation extends JPanel {
         s.forSource(new Surface.VertexRoutine() {
             public void run(int x, int y) {
                 g2.setPaint(Color.green);
-                g.fillOval(xPosition(x)-dotsize, yPosition(y)-dotsize,
-                        dotsize*2, dotsize*2);
+                g.fillOval(xPosition(x) - dotsize, yPosition(y) - dotsize,
+                        dotsize * 2, dotsize * 2);
                 g2.setPaint(Color.black);
                 g2.setStroke(new BasicStroke(2));
-                g.drawOval(xPosition(x)-dotsize, yPosition(y)-dotsize,
-                        dotsize*2, dotsize*2);
+                g.drawOval(xPosition(x) - dotsize, yPosition(y) - dotsize,
+                        dotsize * 2, dotsize * 2);
             }
         });
     }
@@ -1011,13 +1022,13 @@ class Animation extends JPanel {
     // UI needs to call this routine when vertex locations have changed.
     //
     public void reset() {
-        repaint();      // Tell graphics system to re-render.
+        repaint(); // Tell graphics system to re-render.
     }
 
     // Constructor
     //
     public Animation(Surface S) {
-        setPreferredSize(new Dimension(width+border*2, height+border*2));
+        setPreferredSize(new Dimension(width + border * 2, height + border * 2));
         setBackground(Color.white);
         setForeground(Color.black);
         s = S;
@@ -1025,9 +1036,9 @@ class Animation extends JPanel {
     }
 }
 
-// Class UI is the user interface.  It displays a Surface canvas above
-// a row of buttons and a row of statistics.  Actions (event handlers)
-// are defined for each of the buttons.  Depending on the state of the
+// Class UI is the user interface. It displays a Surface canvas above
+// a row of buttons and a row of statistics. Actions (event handlers)
+// are defined for each of the buttons. Depending on the state of the
 // UI, either the "run" or the "pause" button is the default (highlighted in
 // most window systems); it will often self-push if you hit carriage return.
 //
@@ -1053,8 +1064,8 @@ class UI extends JPanel {
     public void updateTime() {
         Date d = new Date();
         elapsedTime += (d.getTime() - startTime);
-        time.setText(String.format("time: %d.%03d", elapsedTime/1000,
-                elapsedTime%1000));
+        time.setText(String.format("time: %d.%03d", elapsedTime / 1000,
+                elapsedTime % 1000));
     }
 
     public void setDone() {
@@ -1066,20 +1077,20 @@ class UI extends JPanel {
     // Constructor
     //
     public UI(Coordinator C, Surface S, Animation A,
-              long SD, int NT, RootPaneContainer pane) {
+            long SD, int NT, RootPaneContainer pane) {
         final UI ui = this;
         coordinator = C;
         surface = S;
         animation = A;
 
-        final JPanel buttons = new JPanel();   // button panel
+        final JPanel buttons = new JPanel(); // button panel
         final JButton runButton = new JButton("Run");
         final JButton pauseButton = new JButton("Pause");
         final JButton resetButton = new JButton("Reset");
         final JButton randomizeButton = new JButton("Randomize");
         final JButton quitButton = new JButton("Quit");
 
-        final JPanel stats = new JPanel();   // statistics panel
+        final JPanel stats = new JPanel(); // statistics panel
 
         final JLabel seed = new JLabel("seed: " + SD + "   ");
 
@@ -1168,4 +1179,3 @@ class UI extends JPanel {
         root.setDefaultButton(runButton);
     }
 }
-
