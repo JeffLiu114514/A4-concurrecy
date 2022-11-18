@@ -680,7 +680,7 @@ class Surface {
                 }
                 v.predecessor = e;
                 e.select();
-                System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets));
+                // // System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets) + "\n");
                 buckets.get((int) ((altDist / delta) % numBuckets)).add(v);
             }
         }
@@ -725,7 +725,7 @@ class Surface {
         public boolean check_empty_buckets() {
             for (ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray) {
                 for (LinkedHashSet<Vertex> bucket : buckets) {
-                    if (bucket.size() != 0) {
+                    if (!bucket.isEmpty()) {
                         return false;
                     }
                 }
@@ -735,7 +735,7 @@ class Surface {
 
         public boolean check_empty_messagQueues() {
             for (ConcurrentLinkedQueue<Request> messageQueue : messagQueues) {
-                if (messageQueue.size() != 0) {
+                if (!messageQueue.isEmpty()) {
                     return false;
                 }
             }
@@ -744,7 +744,7 @@ class Surface {
 
         public boolean check_current_bucket_empty(int count) {
             for (ArrayList<LinkedHashSet<Vertex>> buckets : bucketsArray) {
-                if (buckets.get(count).size() != 0) {
+                if (!buckets.get(count).isEmpty()) {
                     return false;
                 }
             }
@@ -756,133 +756,109 @@ class Surface {
 
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            while (true) {
-                System.out.println("Thread # " + tid + " at Count " + count);
-                LinkedList<Vertex> temp = new LinkedList<Vertex>();
+            try {
+                boolean outercondition = check_empty_buckets();
+                while (!outercondition) {
+                    LinkedList<Request> temp = new LinkedList<Request>();
+                    LinkedList<Request> laterequest = new LinkedList<Request>();
 
-                while (buckets.get(count).size() != 0) {
+                    barrier.await();
+                    boolean innercondition = check_current_bucket_empty(count);
+                    // // System.out.println("before get into the inner loop, Thread " + tid + " is checking bucket " + count + "\n");
+                    barrier.await();
 
-                    // identify light relaxations
-                    requests = findRequests(buckets.get(count), true);
+                    while (!innercondition) {
 
-                    System.out.println("Thread #" + tid + "has bucket size of " + buckets.get(count).size());
-                    // add all in current bucket to temp and clear current bucket
-                    temp.addAll(buckets.get(count));
-                    buckets.set(count, new LinkedHashSet<Vertex>());
+                        // identify light relaxations
+                        requests = findRequests(buckets.get(count), true);
+                        temp = findRequests(buckets.get(count), false);
+                        laterequest.addAll(temp);
 
-                    // enqueue all light relaxations
-                    for (Request r : requests) {
-                        if (r.v.hashCode() % numThread == tid) {
-                            try {
+                        buckets.set(count, new LinkedHashSet<Vertex>());
+
+                        // enqueue all light relaxations
+                        for (Request r : requests) {
+                            if (r.v.hashCode() % numThread == tid) {
                                 r.relax(tid);
-                            } catch (Coordinator.KilledException e) {
-                                e.printStackTrace();
+                            } else {
+                                messagQueues.get(r.v.hashCode() % numThread).add(r);
                             }
+                        }
+
+                        barrier.await();
+                        boolean message = check_empty_messagQueues();
+                        // System.out.println("Thread " + tid + " is checking message queue empty "+ message + "\n");
+                        barrier.await();
+                        if (message) {
+                            break;
+                        }
+
+                        // incoming request queue
+                        while (!messagQueues.get(tid).isEmpty()) {
+                            Request r = messagQueues.get(tid).poll();              
+                                r.relax(tid);
+                        }
+
+                        barrier.await();
+                        innercondition = check_current_bucket_empty(count);
+                        // System.out.println("Thread " + tid + " is checking bucket " + count + " and its empty " + innercondition + "\n");
+                        barrier.await();
+
+                    }
+
+                    for (Request r : laterequest) {
+                        if (r.v.hashCode() % numThread == tid) {
+                                r.relax(tid);
                         } else {
                             messagQueues.get(r.v.hashCode() % numThread).add(r);
                         }
-//                        messagQueues.get(r.v.hashCode() % numThread).add(r);
                     }
 
+                    // barrier
+                    barrier.await();
+                    // System.out.println("Thread " + tid + "is now at count " + count + "\n");
+                    barrier.await();
 
-                    try {
-                        barrier.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (BrokenBarrierException e) {
-                        e.printStackTrace();
-                    }
-
-                    // check whether there exists any requests, if there is not, then it means we
-                    // can already end this while loop
-                    if (check_empty_messagQueues()) {
-                        break;
-                    }
-
-                    // incoming request queue
+                    // while my incoming queue is not empty
                     while (!messagQueues.get(tid).isEmpty()) {
                         Request r = messagQueues.get(tid).poll();
-                        try {
                             r.relax(tid);
-                        } catch (Coordinator.KilledException e) {
-                            e.printStackTrace();
-                        }
                     }
 
-                    try {
+                    boolean exit_flag = false;
+                    do{
+                        count = count+ 1;
+                        // barrier
                         barrier.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (BrokenBarrierException e) {
-                        e.printStackTrace();
-                    }
 
-                    if (check_current_bucket_empty(count)) {
-                        break;
-                    }
 
-                }
-
-                // this time, we need to check the heavy requests
-                requests = findRequests(temp, false);
-                // enqueue all heavy relaxationsuests
-                for (Request r : requests) {
-                    if (r.v.hashCode() % numThread == tid) {
-                        try {
-                            r.relax(tid);
-                        } catch (Coordinator.KilledException e) {
-                            e.printStackTrace();
+                        if (count == numBuckets) {
+                            for(int i = 0; i < count; i++){
+                                if (!check_current_bucket_empty(i)){
+                                    // System.out.println("count" + i + "is not empty");
+                                }
+                            }
+                            // System.out.println("Thread " + tid + " is exiting with count = " + count + "and number of buckets = " + numBuckets + "\n");      
+                            exit_flag = true;
+                            break;
                         }
-                    } else {
-                        messagQueues.get(r.v.hashCode() % numThread).add(r);
-                    }
-                }
-
-                // barrier
-                try {
-                    barrier.await();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                } catch (BrokenBarrierException e) {
-                    e.printStackTrace();
-                }
-
-                // while my incoming queue is not empty
-                while (!messagQueues.get(tid).isEmpty()) {
-                    Request r = messagQueues.get(tid).poll();
-                    try {
-                        r.relax(tid);
-                    } catch (Coordinator.KilledException e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                boolean ifbreak = false;
-
-                while (true) {
-                    count = (count + 1) % numBuckets;
-                    // barrier
-                    try {
                         barrier.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (BrokenBarrierException e) {
-                        e.printStackTrace();
-                    }
-                    if (check_empty_buckets()) {
-                        ifbreak = true;
-                        break;
-                    }
+                        outercondition = check_empty_buckets();
+                        innercondition = check_current_bucket_empty(count);
+                        // System.out.println("Thread " + tid + " is checking bucket " + count + " and its empty " + innercondition + "\n");
+                        barrier.await();
 
-                    if (buckets.get(count).size() != 0) {
-                        break;
-                    }
-                }
-                if (ifbreak) {
-                    break;
-                }
+                    }while(innercondition && !outercondition);
 
+                    if(exit_flag)
+                        break;
+                }
+                
+
+            } catch (InterruptedException | BrokenBarrierException | Coordinator.KilledException e) {
+                e.printStackTrace();
             }
+            
         }
     }
 
@@ -892,13 +868,6 @@ class Surface {
         numBuckets = 2 * degree;
         if (delta == -1)
             delta = maxCoord / degree;
-        else {
-            int div = maxCoord * 2;
-            if (delta > div)
-                numBuckets = 1;
-            else
-                numBuckets = div / delta + 1;
-        }
 
         // All buckets, together, cover a range of 2 * maxCoord,
         // which is larger than the weight of any edge, so a relaxation
@@ -917,7 +886,15 @@ class Surface {
         bucketsArray.get(0).get(0).add(vertices[0]);
 
         Thread[] threads = new Thread[numThread];
+
+        // CyclicBarrier barrier = new CyclicBarrier(numThread, new Runnable(){
+        //     @Override
+        //     public void run() {
+        //         // System.out.println("This barrier has passed all of them");
+        //     }
+        // });
         CyclicBarrier barrier = new CyclicBarrier(numThread);
+        
 
         // start running parallelized delta-stepping
         for (int t = 0; t < numThread; t++) {
