@@ -680,7 +680,7 @@ class Surface {
                 }
                 v.predecessor = e;
                 e.select();
-                // // System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets) + "\n");
+                System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets));
                 buckets.get((int) ((altDist / delta) % numBuckets)).add(v);
             }
         }
@@ -755,7 +755,6 @@ class Surface {
         public void run() {
 
             LinkedList<Request> requests = new LinkedList<Request>();
-
             try {
                 boolean outercondition = check_empty_buckets();
                 while (!outercondition) {
@@ -883,7 +882,18 @@ class Surface {
         }
 
         // set the source vertex
+        LinkedHashSet<Vertex> temp = new LinkedHashSet<>();
+        LinkedList<Request> requests;
+        temp.add(vertices[0]);
         bucketsArray.get(0).get(0).add(vertices[0]);
+        requests = findRequests(temp, false);
+        for (Request r : requests) {
+            messagQueues.get(r.v.hashCode() % numThread).add(r);
+        }
+        requests = findRequests(temp, true);
+        for (Request r : requests) {
+            messagQueues.get(r.v.hashCode() % numThread).add(r);
+        }
 
         Thread[] threads = new Thread[numThread];
 
