@@ -680,7 +680,7 @@ class Surface {
                 }
                 v.predecessor = e;
                 e.select();
-                System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets));
+                //System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets));
                 buckets.get((int) ((altDist / delta) % numBuckets)).add(v);
             }
         }
@@ -756,8 +756,8 @@ class Surface {
 
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            while (true) {
-                System.out.println("Thread # " + tid + " at Count " + count);
+            while (!check_empty_buckets()) {
+                //System.out.println("Thread # " + tid + " at Count " + count);
                 LinkedList<Vertex> temp = new LinkedList<Vertex>();
 
                 while (buckets.get(count).size() != 0) {
@@ -765,7 +765,7 @@ class Surface {
                     // identify light relaxations
                     requests = findRequests(buckets.get(count), true);
 
-                    System.out.println("Thread #" + tid + "has bucket size of " + buckets.get(count).size());
+                    //System.out.println("Thread #" + tid + "has bucket size of " + buckets.get(count).size());
                     // add all in current bucket to temp and clear current bucket
                     temp.addAll(buckets.get(count));
                     buckets.set(count, new LinkedHashSet<Vertex>());
@@ -785,42 +785,52 @@ class Surface {
                     }
 
 
+//                    try {
+//                        barrier.await();
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    } catch (BrokenBarrierException e) {
+//                        e.printStackTrace();
+//                    }
+//
+//                    // check whether there exists any requests, if there is not, then it means we
+//                    // can already end this while loop
+//                    if (check_empty_messagQueues()) {
+//                        break;
+//                    }
+
+
+//
+
+//
+//                    if (check_current_bucket_empty(count)) {
+//                        break;
+//                    }
+
+                }
+                try {
+                    barrier.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (BrokenBarrierException e) {
+                    e.printStackTrace();
+                }
+                // incoming request queue
+                while (!messagQueues.get(tid).isEmpty()) {
+                    Request r = messagQueues.get(tid).poll();
                     try {
-                        barrier.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (BrokenBarrierException e) {
+                        r.relax(tid);
+                    } catch (Coordinator.KilledException e) {
                         e.printStackTrace();
                     }
+                }
 
-                    // check whether there exists any requests, if there is not, then it means we
-                    // can already end this while loop
-                    if (check_empty_messagQueues()) {
-                        break;
-                    }
-
-                    // incoming request queue
-                    while (!messagQueues.get(tid).isEmpty()) {
-                        Request r = messagQueues.get(tid).poll();
-                        try {
-                            r.relax(tid);
-                        } catch (Coordinator.KilledException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    try {
-                        barrier.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (BrokenBarrierException e) {
-                        e.printStackTrace();
-                    }
-
-                    if (check_current_bucket_empty(count)) {
-                        break;
-                    }
-
+                try {
+                    barrier.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (BrokenBarrierException e) {
+                    e.printStackTrace();
                 }
 
                 // this time, we need to check the heavy requests
@@ -857,28 +867,40 @@ class Surface {
                     }
                 }
 
-                boolean ifbreak = false;
+//                boolean ifbreak = false;
+//
+//                while (true) {
+//                    count = (count + 1) % numBuckets;
+//                    // barrier
+//                    try {
+//                        barrier.await();
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    } catch (BrokenBarrierException e) {
+//                        e.printStackTrace();
+//                    }
+//                    if (check_empty_buckets()) {
+//                        ifbreak = true;
+//                        break;
+//                    }
+//
+//                    if (buckets.get(count).size() != 0) {
+//                        break;
+//                    }
+//                }
+//                if (ifbreak) {
+//                    break;
+//                }
 
-                while (true) {
-                    count = (count + 1) % numBuckets;
-                    // barrier
-                    try {
-                        barrier.await();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (BrokenBarrierException e) {
-                        e.printStackTrace();
-                    }
-                    if (check_empty_buckets()) {
-                        ifbreak = true;
-                        break;
-                    }
-
-                    if (buckets.get(count).size() != 0) {
-                        break;
-                    }
+                count = (count + 1) % numBuckets;
+                try {
+                    barrier.await();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                } catch (BrokenBarrierException e) {
+                    e.printStackTrace();
                 }
-                if (ifbreak) {
+                if (check_empty_buckets()) {
                     break;
                 }
 
@@ -914,7 +936,18 @@ class Surface {
         }
 
         // set the source vertex
+        LinkedHashSet<Vertex> temp = new LinkedHashSet<>();
+        LinkedList<Request> requests;
+        temp.add(vertices[0]);
         bucketsArray.get(0).get(0).add(vertices[0]);
+        requests = findRequests(temp, false);
+        for (Request r : requests) {
+            messagQueues.get(r.v.hashCode() % numThread).add(r);
+        }
+        requests = findRequests(temp, true);
+        for (Request r : requests) {
+            messagQueues.get(r.v.hashCode() % numThread).add(r);
+        }
 
         Thread[] threads = new Thread[numThread];
         CyclicBarrier barrier = new CyclicBarrier(numThread);
