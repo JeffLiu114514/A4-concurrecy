@@ -680,6 +680,7 @@ class Surface {
                 }
                 v.predecessor = e;
                 e.select();
+                System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets));
                 buckets.get((int) ((altDist / delta) % numBuckets)).add(v);
             }
         }
@@ -755,14 +756,16 @@ class Surface {
 
             LinkedList<Request> requests = new LinkedList<Request>();
 
-            while (!check_empty_buckets()) {
+            while (true) {
+                System.out.println("Thread # " + tid + " at Count " + count);
                 LinkedList<Vertex> temp = new LinkedList<Vertex>();
 
-                while (true) {
+                while (buckets.get(count).size() != 0) {
 
                     // identify light relaxations
                     requests = findRequests(buckets.get(count), true);
 
+                    System.out.println("Thread #" + tid + "has bucket size of " + buckets.get(count).size());
                     // add all in current bucket to temp and clear current bucket
                     temp.addAll(buckets.get(count));
                     buckets.set(count, new LinkedHashSet<Vertex>());
@@ -778,7 +781,9 @@ class Surface {
                         } else {
                             messagQueues.get(r.v.hashCode() % numThread).add(r);
                         }
+//                        messagQueues.get(r.v.hashCode() % numThread).add(r);
                     }
+
 
                     try {
                         barrier.await();
@@ -855,7 +860,7 @@ class Surface {
                 boolean ifbreak = false;
 
                 while (true) {
-                    count++;
+                    count = (count + 1) % numBuckets;
                     // barrier
                     try {
                         barrier.await();
@@ -1072,12 +1077,14 @@ class UI extends JPanel {
         root.setDefaultButton(null);
         updateTime();
         state = done;
-    };
+    }
+
+    ;
 
     // Constructor
     //
     public UI(Coordinator C, Surface S, Animation A,
-            long SD, int NT, RootPaneContainer pane) {
+              long SD, int NT, RootPaneContainer pane) {
         final UI ui = this;
         coordinator = C;
         surface = S;
