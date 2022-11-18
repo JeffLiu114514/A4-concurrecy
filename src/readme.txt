@@ -17,6 +17,7 @@ set up my own bucket array
 while there are any nonempty buckets
       while current bucket is nonempty
             identify light and heavy relaxations associated with vertices in current bucket
+            
             clear my current bucket
             identify which light relaxations belong to other threads; enqueue Requests for them in the appropriate queues
             perform all the light relaxations that belong to me; remember the heavy relaxations
