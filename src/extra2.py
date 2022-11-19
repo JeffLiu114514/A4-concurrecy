@@ -3,8 +3,8 @@ import sys
 import pandas as pd
 
 # run different number of threads and delta
-T = [0, 4, 8, 16]
-N = 100000
+T = [0, 1, 2, 4, 8, 16]
+N = 1000000
 D = [100000000, 50000000, 10000000, 5000000, 1000000]
 
 data = dict()
