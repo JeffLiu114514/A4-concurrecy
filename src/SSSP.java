@@ -20,6 +20,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
 import javax.swing.*;
+
+// import Surface.VertexRoutine;
+
 import java.util.*;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -255,6 +258,10 @@ public class SSSP {
                     "%.3f",
                     (double) (endTime - startTime) / 1000);
         }
+        for (int i = s.vertices.length - 6; i < s.vertices.length; i++) {
+             System.out.println("Node distance: " + s.vertices[i].distToSource + " Node pred: " + s.vertices[i].predecessor.other(s.vertices[i]));
+        }
+
     }
 }
 
@@ -330,7 +337,7 @@ class Surface {
     // Not needed at present, but will need to be passed to any
     // newly created workers.
     private final int n; // number of vertices
-    private final Vertex vertices[];
+    public final Vertex vertices[];
     // Main array of vertices, used for partitioning and rendering.
     private final HashSet<Vertex> vertexHash;
     // Used to ensure that we never have two vertices directly on top of
@@ -341,7 +348,7 @@ class Surface {
     private int degree; // desired average node degree
     private final Random prn; // pseudo-random number generator
 
-    private class Vertex {
+    public class Vertex {
         public final int xCoord;
         public final int yCoord;
 
@@ -384,7 +391,7 @@ class Surface {
     // explicit edge class. Having one makes the graphics a lot more
     // straightforward, though.
     //
-    private class Edge {
+    public class Edge {
         public final Vertex v1; // vertices are in arbitrary order
         public final Vertex v2;
         public final int weight;
@@ -932,6 +939,7 @@ class Surface {
                 e.printStackTrace();
             }
         }
+
     }
 
     // End of Delta stepping.
