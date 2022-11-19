@@ -680,7 +680,7 @@ class Surface {
                 }
                 v.predecessor = e;
                 e.select();
-                System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets));
+                // System.out.println("Vertex was added to thread " + tid + " bucket " + (int) ((altDist / delta) % numBuckets));
                 buckets.get((int) ((altDist / delta) % numBuckets)).add(v);
             }
         }
@@ -778,6 +778,7 @@ class Surface {
                         // enqueue all light relaxations
                         for (Request r : requests) {
                             if (r.v.hashCode() % numThread == tid) {
+                                // System.out.println("light relaxation for its self\n");
                                 r.relax(tid);
                             } else {
                                 messagQueues.get(r.v.hashCode() % numThread).add(r);
@@ -794,8 +795,9 @@ class Surface {
 
                         // incoming request queue
                         while (!messagQueues.get(tid).isEmpty()) {
-                            Request r = messagQueues.get(tid).poll();              
-                                r.relax(tid);
+                            Request r = messagQueues.get(tid).poll();    
+                            // System.out.println("light relaxation from message queue\n");       
+                            r.relax(tid);
                         }
 
                         barrier.await();
@@ -807,7 +809,8 @@ class Surface {
 
                     for (Request r : laterequest) {
                         if (r.v.hashCode() % numThread == tid) {
-                                r.relax(tid);
+                            // System.out.println("thread " + tid + " heavy relaxation for its self\n");
+                            r.relax(tid);
                         } else {
                             messagQueues.get(r.v.hashCode() % numThread).add(r);
                         }
@@ -821,7 +824,8 @@ class Surface {
                     // while my incoming queue is not empty
                     while (!messagQueues.get(tid).isEmpty()) {
                         Request r = messagQueues.get(tid).poll();
-                            r.relax(tid);
+                        // System.out.println("thread " + tid + " heavy relaxation from message queue\n");
+                        r.relax(tid);
                     }
 
                     boolean exit_flag = false;
@@ -834,12 +838,20 @@ class Surface {
                         if (count == numBuckets) {
                             for(int i = 0; i < count; i++){
                                 if (!check_current_bucket_empty(i)){
+                                    count = 0;
                                     // System.out.println("count" + i + "is not empty");
+                                    break;
                                 }
                             }
-                            // System.out.println("Thread " + tid + " is exiting with count = " + count + "and number of buckets = " + numBuckets + "\n");      
-                            exit_flag = true;
-                            break;
+                            // // System.out.println("Thread " + tid + " is exiting with count = " + count + "and number of buckets = " + numBuckets + "\n");  
+                            if (count == numBuckets) {
+                                exit_flag = true;
+                                break;
+                            }
+                            else{
+                                exit_flag = false;
+                                break;
+                            }    
                         }
                         barrier.await();
                         outercondition = check_empty_buckets();
