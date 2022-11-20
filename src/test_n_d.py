@@ -10,11 +10,13 @@ index = []
 print("\nRun deep_largeN exper\n")
 # for d in [500]:
 cur_array = []
+d = 500
+n = 100000
 for t in T:
-    cur = subprocess.run(["java", "SSSP", "-a", "0", "-n", "1000000", "-t", f"{t}"], capture_output=True)
+    cur = subprocess.run(["java", "SSSP", "-a", "0", "-n", f"{n}", "-t", f"{t}", "-d", f"{d}"], capture_output=True)
     cur_array.append(cur.stdout.decode('utf-8'))
-    print(f"node: {1000000}, t: {t}, time: {cur.stdout.decode('utf-8')}\n")
+    print(f"node: {n}, t: {t}, d: {d}, time: {cur.stdout.decode('utf-8')}\n")
 data[5] = cur_array
 
 final = pd.DataFrame(data, index=T).T
-final.to_csv("./results/n_1000000_d_default.csv")
+final.to_csv(f"./results/n_{n}_d_{d}.csv")

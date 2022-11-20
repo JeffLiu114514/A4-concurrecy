@@ -819,7 +819,7 @@ class Surface {
                     // barrier
                     barrier.await();
                     // System.out.println("Thread " + tid + "is now at count " + count + "\n");
-                    barrier.await();
+                    //barrier.await();
 
                     // while my incoming queue is not empty
                     while (!messagQueues.get(tid).isEmpty()) {
