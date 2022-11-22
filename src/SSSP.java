@@ -753,7 +753,7 @@ class Surface {
 
         @Override
         public void run() {
-
+            coord.register();
             LinkedList<Request> requests = new LinkedList<Request>();
             try {
                 boolean outercondition = check_empty_buckets();
@@ -761,10 +761,10 @@ class Surface {
                     LinkedList<Request> temp = new LinkedList<Request>();
                     LinkedList<Request> laterequest = new LinkedList<Request>();
 
-                    //barrier.await();
+//                    barrier.await();
                     boolean innercondition = check_current_bucket_empty(count);
                     // // System.out.println("before get into the inner loop, Thread " + tid + " is checking bucket " + count + "\n");
-                    //barrier.await();
+                    barrier.await();
 
                     while (!innercondition) {
 
@@ -788,7 +788,7 @@ class Surface {
                         barrier.await();
                         boolean message = check_empty_messagQueues();
                         // System.out.println("Thread " + tid + " is checking message queue empty "+ message + "\n");
-                        //barrier.await();
+                        barrier.await();
                         if (message) {
                             break;
                         }
@@ -800,7 +800,7 @@ class Surface {
                             r.relax(tid);
                         }
 
-                        //barrier.await();
+                        barrier.await();
                         innercondition = check_current_bucket_empty(count);
                         // System.out.println("Thread " + tid + " is checking bucket " + count + " and its empty " + innercondition + "\n");
                         barrier.await();
@@ -819,7 +819,6 @@ class Surface {
                     // barrier
                     barrier.await();
                     // System.out.println("Thread " + tid + "is now at count " + count + "\n");
-                    //barrier.await();
 
                     // while my incoming queue is not empty
                     while (!messagQueues.get(tid).isEmpty()) {
@@ -853,11 +852,11 @@ class Surface {
                                 break;
                             }    
                         }
-                        //barrier.await();
+//                        barrier.await();
                         outercondition = check_empty_buckets();
                         innercondition = check_current_bucket_empty(count);
                         // System.out.println("Thread " + tid + " is checking bucket " + count + " and its empty " + innercondition + "\n");
-                        //barrier.await();
+                        barrier.await();
 
                     }while(innercondition && !outercondition);
 
@@ -869,7 +868,7 @@ class Surface {
             } catch (InterruptedException | BrokenBarrierException | Coordinator.KilledException e) {
                 e.printStackTrace();
             }
-            
+            coord.unregister();
         }
     }
 
