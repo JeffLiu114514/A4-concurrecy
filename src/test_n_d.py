@@ -10,8 +10,8 @@ index = []
 print("\nRun deep_largeN exper\n")
 # for d in [500]:
 cur_array = []
-d = 500
-n = 100000
+d = 100
+n = 500000
 for t in T:
     cur = subprocess.run(["java", "SSSP", "-a", "0", "-n", f"{n}", "-t", f"{t}", "-d", f"{d}"], capture_output=True)
     cur_array.append(cur.stdout.decode('utf-8'))
