@@ -5,7 +5,7 @@ import pandas as pd
 # run different number of threads and delta
 T = [0, 1, 2, 4, 8, 16]
 N = 1000000
-D = [100000000, 50000000, 10000000, 5000000, 1000000]
+D = [5, 100, 10000, 100000, 1000000, 10000000]
 
 data = dict()
 index = []
@@ -20,4 +20,4 @@ for d in D:
     data[d] = cur_array
 
 final = pd.DataFrame(data, index=T).T
-final.to_csv("extra2_experiment.csv")
+final.to_csv("./results/extra2.csv")
