@@ -897,14 +897,14 @@ class Surface {
         LinkedList<Request> requests;
         temp.add(vertices[0]);
         bucketsArray.get(0).get(0).add(vertices[0]);
-        requests = findRequests(temp, false);
-        for (Request r : requests) {
-            messagQueues.get(r.v.hashCode() % numThread).add(r);
-        }
-        requests = findRequests(temp, true);
-        for (Request r : requests) {
-            messagQueues.get(r.v.hashCode() % numThread).add(r);
-        }
+        // requests = findRequests(temp, false);
+        // for (Request r : requests) {
+        //     messagQueues.get(r.v.hashCode() % numThread).add(r);
+        // }
+        // requests = findRequests(temp, true);
+        // for (Request r : requests) {
+        //     messagQueues.get(r.v.hashCode() % numThread).add(r);
+        // }
 
         Thread[] threads = new Thread[numThread];
 
